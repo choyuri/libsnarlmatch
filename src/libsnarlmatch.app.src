@@ -1,0 +1,11 @@
+{application, libsnarlmatch,
+ [
+  {description, "permission matcher library"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
