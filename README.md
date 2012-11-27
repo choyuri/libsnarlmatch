@@ -1,0 +1,4 @@
+libsnarlmatch
+=============
+
+Permission matcher librariy
