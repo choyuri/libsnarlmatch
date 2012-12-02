@@ -43,8 +43,8 @@ test_perms(Perm, [Test|Tests]) ->
     match(Perm, Test) orelse test_perms(Perm, Tests).
 
 
--ifdef(TEST).
 
+-ifdef(TEST).
 
 match_direct_test() ->
     ?assert(true == match([some_permission], [some_permission])).
