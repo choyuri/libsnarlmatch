@@ -1,4 +1,3 @@
-include project.mk
 include tools.mk
 
 .PHONY: deps
