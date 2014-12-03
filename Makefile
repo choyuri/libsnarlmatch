@@ -1,12 +1,13 @@
-REBAR=./rebar
+include project.mk
+include tools.mk
 
-.PHONY: all
+.PHONY: deps
 
-all:
+compile:
 	$(REBAR) compile
+
+deps:
+	$(REBAR) get-deps
 
 clean:
 	$(REBAR) clean
-
-test:
-	$(REBAR) skip_deps=true eunit
