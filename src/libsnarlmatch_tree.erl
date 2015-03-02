@@ -21,13 +21,16 @@ add1([], Dict) ->
     orddict:store(nothing, true, Dict);
 
 add1([<<"...">>], Dict) ->
-    D1 = orddict:store(<<"...">>, orddict:store(nothing, true, new()), new()),
+    D1 = orddict:store('...', orddict:store(nothing, true, new()), new()),
     case orddict:find(nothing, Dict) of
         {ok, true} ->
             orddict:store(nothing, true, D1);
         _ ->
             D1
     end;
+
+add1([<<"_">> | T], Dict) ->
+    add1(['_' | T], Dict);
 
 add1([E | T], Dict) ->
     V1 = case orddict:find(E, Dict) of
@@ -46,11 +49,11 @@ test_perms(_Perm, []) ->
     false;
 
 test_perms([E | T], Dict) ->
-    case orddict:find(<<"...">>, Dict) of
+    case orddict:find('...', Dict) of
         {ok, _} ->
             true;
         _ ->
-            R1 = case orddict:find(<<"_">>, Dict) of
+            R1 = case orddict:find('_', Dict) of
                      {ok, V1} ->
                          test_perms(T, V1);
                      _ ->

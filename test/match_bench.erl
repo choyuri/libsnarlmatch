@@ -74,8 +74,17 @@ bench_test() ->
     L = permissions(),
     P = permission(3, false),
     T = libsnarlmatch:from_list(L),
-    ?debugTime("List: ", test_perms(P, L)),
-    ?debugTime("Tree: ", libsnarlmatch:test_perms(P, T)),
+    ?debugTime("List: ", bench_list(P, L)),
+    ?debugTime("Tree: ", bench_tree(P, T)),
     true.
 
+bench_list(P, L) ->
+    [begin
+      test_perms(P, L)
+     end || _ <- lists:seq(0,1000)], true.
+
+bench_tree(P, T) ->
+    [begin
+      libsnarlmatch:test_perms(P, T)
+     end || _ <- lists:seq(0,1000)], true. 
 -endif.
