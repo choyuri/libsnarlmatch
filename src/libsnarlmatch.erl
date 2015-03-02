@@ -1,9 +1,5 @@
 -module(libsnarlmatch).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -export([test_perms/2, new/0, add/2, from_list/1, to_list/1]).
 
 %-type permission() :: [binary()].

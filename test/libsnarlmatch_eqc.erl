@@ -9,12 +9,19 @@
 test_permission() ->
     not_empty(list(non_blank_string())).
 
+permission_prefix() ->
+    list(frequency([{9,non_blank_string()}, {1, <<"_">>}])).
+
 permission() ->
-    oneof([
-           not_empty(list(oneof([non_blank_string(), <<"_">>]))),
-           ?LET(L, list(oneof([non_blank_string(), <<"_">>])),
-                L ++ [<<"...">>])
-          ]).
+    frequency([
+               {20, not_empty(permission_prefix())},
+               {1, ?LET(L, permission_prefix(), L ++ [<<"...">>])}
+              ]).
+
+
+no_admin_permission() ->
+    ?SUCHTHAT(P, permission(),
+              [E || E  <- P, E =/= <<"_">>, E =/= <<"...">>] =/= []).
 
 tree() ->
     ?SIZED(Size, tree(Size)).
@@ -28,6 +35,26 @@ tree(Size) ->
                 ?LET(P, permission(), {libsnarlmatch:add(P, T), [P | L]}))
              || Size > 0
             ])).
+
+
+no_admin_tree() ->
+    ?SIZED(Size, no_admin_tree(Size)).
+
+no_admin_tree(Size) ->
+    ?LAZY(
+       oneof(
+         [ {libsnarlmatch:new(), []} || Size == 0 ]
+         ++ [?LETSHRINK(
+                [{T, L}], [no_admin_tree(Size - 1)],
+                ?LET(P, no_admin_permission(), {libsnarlmatch:add(P, T), [P | L]}))
+             || Size > 0
+            ])).
+
+tree_and_bad_perm() ->
+    ?LET({T, L}, no_admin_tree(),
+         ?LET(P,
+              ?SUCHTHAT(P, test_permission(),
+                        not test_perms(P, L)), {T, P})).
 
 permissions() ->
     not_empty(list(permission())).
@@ -54,7 +81,7 @@ match([_,X|InRest], [<<"...">>, X|TestRest] = Test) ->
     match(InRest, TestRest) orelse match([X| InRest], Test);
 
 match([_ | InRest], [<<"...">>|_TestRest] = Test) ->
-     match(InRest, Test);
+    match(InRest, Test);
 
 match([X|InRest], [X|TestRest]) ->
     match(InRest, TestRest);
@@ -70,6 +97,15 @@ test_perms(_Perm, []) ->
 
 test_perms(Perm, [Test|Tests]) ->
     match(Perm, Test) orelse test_perms(Perm, Tests).
+
+prop_no_match() ->
+    ?FORALL({T, P}, tree_and_bad_perm(),
+            ?WHENFAIL(io:format(
+                        user,
+                        "T : ~p~n"
+                        "P : ~p~n",
+                        [T, P]),
+                      not libsnarlmatch:test_perms(P, T))).
 
 prop_list_convert() ->
     ?FORALL(LIn, permissions(),
@@ -137,54 +173,3 @@ prop_test_all_allowed() ->
 
 -endif.
 -endif.
-
-
-%% match_direct_test() ->
-%%     ?assert(true == match([<<"some_permission">>], [<<"some_permission">>])).
-
-%% nomatch_direct_test() ->
-%%     ?assert(false == match([<<"some_permission">>], [<<"some_other_permission">>])).
-
-%% match_direct_list_test() ->
-%%     ?assert(true == match([<<"some">>, <<"permission">>], [<<"some">>, <<"permission">>])).
-
-%% nomatch_direct_list_test() ->
-%%     ?assert(false == match([<<"some">>, <<"permission">>], [<<"some">>, <<"other">>, <<"permission">>])),
-%%     ?assert(false == match([<<"some">>, <<"permission">>], [<<"some">>, <<"other_permission">>])).
-
-%% nomatch_short_list_test() ->
-%%     ?assert(false == match([<<"some">>, <<"permission">>], [<<"some">>])).
-
-%% nomatch_long_list_test() ->
-%%     ?assert(false == match([<<"some">>, <<"permission">>], [<<"some">>, <<"permission">>, yap])).
-
-%% match_tripoint_test() ->
-%%     ?assert(true == match([<<"some">>, <<"permission">>], [<<"...">>])).
-
-%% match_tripoint_at_end_test() ->
-%%     ?assert(true == match([<<"some">>, <<"permission">>], [<<"some">>, <<"permission">>, <<"...">>])).
-
-%% match_tripoint_start_test() ->
-%%     ?assert(true == match([<<"some">>, <<"cool">>, <<"permission">>], [<<"...">>, <<"permission">>])).
-
-%% match_tripoint_end_test() ->
-%%     ?assert(true == match([<<"some">>, <<"cool">>, <<"permission">>], [<<"some">>, <<"...">>])).
-
-%% match_tripoint_middle_test() ->
-%%     ?assert(true == match([<<"some">>, <<"really">>, <<"cool">>, <<"permission">>], [<<"some">>, <<"...">>, <<"permission">>])).
-
-%% match_underscore_test() ->
-%%     ?assert(true == match([some], [<<"_">>])).
-
-%% match_underscore_start_test() ->
-%%     ?assert(true == match([<<"some">>, <<"permission">>], [<<"_">>, <<"permission">>])).
-
-%% match_underscore_end_test() ->
-%%     ?assert(true == match([<<"some">>, <<"permission">>], [<<"some">>, <<"_">>])).
-
-%% match_underscore_middle_test() ->
-%%     ?assert(true == match([<<"some">>, <<"cool">>, <<"permission">>], [<<"some">>, <<"_">>, <<"permission">>])).
-
-%% nomatch_underscore_double_test() ->
-%%     ?assert(false == match([<<"some">>, <<"really">>, <<"cool">>, <<"permission">>], [<<"some">>, <<"_">>, <<"permission">>])).
-
