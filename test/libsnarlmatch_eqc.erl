@@ -6,6 +6,9 @@
 -include_lib("fqc/include/fqc.hrl").
 -compile(export_all).
 
+-define(L, libsnarlmatch).
+-define(T, libsnarlmatch_tree).
+
 test_permission() ->
     not_empty(list(non_blank_string())).
 
@@ -29,10 +32,10 @@ tree() ->
 tree(Size) ->
     ?LAZY(
        oneof(
-         [ {libsnarlmatch_tree:new(), []} || Size == 0 ]
+         [ {?T:new(), ?L:new()} || Size == 0 ]
          ++ [?LETSHRINK(
                 [{T, L}], [tree(Size - 1)],
-                ?LET(P, permission(), {libsnarlmatch_tree:add(P, T), [P | L]}))
+                ?LET(P, permission(), {?L:add(P, T), ?L:add(P, L)}))
              || Size > 0
             ])).
 
@@ -43,10 +46,10 @@ no_admin_tree() ->
 no_admin_tree(Size) ->
     ?LAZY(
        oneof(
-         [ {libsnarlmatch_tree:new(), []} || Size == 0 ]
+         [ {?T:new(), ?L:new()} || Size == 0 ]
          ++ [?LETSHRINK(
                 [{T, L}], [no_admin_tree(Size - 1)],
-                ?LET(P, no_admin_permission(), {libsnarlmatch_tree:add(P, T), [P | L]}))
+                ?LET(P, no_admin_permission(), {?L:add(P, T), ?L:add(P, L)}))
              || Size > 0
             ])).
 
@@ -54,7 +57,7 @@ tree_and_bad_perm() ->
     ?LET({T, L}, no_admin_tree(),
          ?LET(P,
               ?SUCHTHAT(P, test_permission(),
-                        not libsnarlmatch:test_perms(P, L)), {T, P})).
+                        not ?L:test_perms(P, L)), {T, P})).
 
 permissions() ->
     not_empty(list(permission())).
@@ -66,15 +69,15 @@ prop_no_match() ->
                         "T : ~p~n"
                         "P : ~p~n",
                         [T, P]),
-                      not libsnarlmatch_tree:test_perms(P, T))).
+                      not ?L:test_perms(P, T))).
 
 prop_list_convert() ->
     ?FORALL(LIn, permissions(),
             begin
-                T1 = libsnarlmatch_tree:from_list(LIn),
-                L1 = libsnarlmatch_tree:to_list(T1),
-                T2 = libsnarlmatch_tree:from_list(L1),
-                L2 = libsnarlmatch_tree:to_list(T1),
+                T1 = ?T:from_list(LIn),
+                L1 = ?T:to_list(T1),
+                T2 = ?T:from_list(L1),
+                L2 = ?T:to_list(T1),
                 ?WHENFAIL(io:format(
                             user,
                             "LIn : ~p~n"
@@ -89,9 +92,9 @@ prop_list_convert() ->
 prop_compare_from_list() ->
     ?FORALL({L, P}, {permissions(), test_permission()},
             begin
-                T = libsnarlmatch_tree:from_list(L),
-                Res1 = libsnarlmatch:test_perms(P, L),
-                Res2 = libsnarlmatch_tree:test_perms(P, T),
+                T = ?T:from_list(L),
+                Res1 = ?L:test_perms(P, L),
+                Res2 = ?L:test_perms(P, T),
                 ?WHENFAIL(io:format(
                             user,
                             "L : ~p~n"
@@ -105,8 +108,8 @@ prop_compare_from_list() ->
 prop_compare_build() ->
     ?FORALL({{T, L}, P}, {tree(), test_permission()},
             begin
-                Res1 = libsnarlmatch:test_perms(P, L),
-                Res2 = libsnarlmatch_tree:test_perms(P, T),
+                Res1 = ?L:test_perms(P, L),
+                Res2 = ?T:test_perms(P, T),
                 ?WHENFAIL(io:format(
                             user,
                             "L : ~p~n"
@@ -120,7 +123,7 @@ prop_compare_build() ->
 prop_test_all_allowed() ->
     ?FORALL({T, L}, tree(),
             begin
-                R1 = [libsnarlmatch_tree:test_perms(P, T) || P <- L],
+                R1 = [?T:test_perms(P, T) || P <- L],
                 R2 = [V || V <- R1, V =/= true],
                 ?WHENFAIL(io:format(
                             user,

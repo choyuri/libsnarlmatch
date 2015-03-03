@@ -4,7 +4,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([test_perms/2, match/2, new/0]).
+-export([test_perms/2, match/2, new/0, add/2, to_list/1]).
 
 -type permission() :: [binary()].
 -type permission_matcher() :: [binary()].
@@ -12,6 +12,30 @@
 
 new() ->
     [].
+
+-spec test_perms(Permissions::[permission()], Matcher::permission_matcher()) ->
+                   true | false.
+
+test_perms(Perm, {tree, _} = T) ->
+    libsnarlmatch_tree:test_perms(Perm, T);
+
+test_perms(_Perm, []) ->
+    false;
+
+test_perms(Perm, [Test|Tests]) ->
+    match(Perm, Test) orelse test_perms(Perm, Tests).
+
+add(Perm, {tree,_} = T) ->
+    libsnarlmatch_tree:add(Perm, T);
+
+add(Perm, Perms) ->
+    [Perm | Perms].
+
+to_list({tree, _} = T) ->
+    libsnarlmatch_tree:to_list(T);
+
+to_list(Perms) ->
+    Perms.
 
 -spec match(Permission::permission(), Matcher::permission_matcher()) ->
                    true | false.
@@ -48,13 +72,7 @@ match([_|InRest], [<<"_">>|TestRest]) ->
 match(_, _) ->
     false.
 
--spec test_perms(Permissions::[permission()], Matcher::permission_matcher()) ->
-                   true | false.
-test_perms(_Perm, []) ->
-    false;
 
-test_perms(Perm, [Test|Tests]) ->
-    match(Perm, Test) orelse test_perms(Perm, Tests).
 
 -ifdef(TEST).
 
