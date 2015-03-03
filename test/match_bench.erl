@@ -48,22 +48,35 @@ bench_dict_test_() ->
     P = permission(3, false),
     T = libsnarlmatch_tree:from_list(L),
     [
-     {timeout, 60, ?_assert(?debugTime("List:     ", bench_list(P, L)))},
+     {timeout, 60, ?_assert(?debugTime("List/10:  ", bench_list(P, L)))},
      {timeout, 60, ?_assert(?debugTime("Conv Tree ", bench_conv_tree(L)))},
+     {timeout, 60, ?_assert(?debugTime("Conv List ", bench_conv_list(T)))},
      {timeout, 60, ?_assert(?debugTime("Tree      ", bench_tree(P, T)))}
     ].
 
 
 
 bench_conv_tree(L) ->
+    %%fprof:trace(start, "from_list.trace"),
     [begin
          libsnarlmatch_tree:from_list(L)
-     end || _ <- lists:seq(0, 100)], true.
+     end || _ <- lists:seq(0, 10)],
+    %%fprof:trace(stop),
+    true.
+
+bench_conv_list(T) ->
+    %%fprof:trace(start, "to_list.trace"),
+    [begin
+         libsnarlmatch_tree:to_list(T)
+     end || _ <- lists:seq(0, 10)],
+    %%fprof:trace(stop),
+    true.
+
 
 bench_list(P, L) ->
     [begin
          libsnarlmatch:test_perms(P, L)
-     end || _ <- lists:seq(0,10000)], true.
+     end || _ <- lists:seq(0,1000)], true.
 
 bench_tree(P, T) ->
     [begin

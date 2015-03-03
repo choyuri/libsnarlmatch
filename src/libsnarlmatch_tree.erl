@@ -17,43 +17,61 @@ test_perms(Perm, {tree, Dict}) ->
     test_perms_tree(Perm, Dict).
 
 from_list(L) ->
-    {tree, lists:foldl(fun add_tree/2, ?O:new(), lists:usort(L))}.
+    {tree, lists:foldl(fun add_tree/2, [], lists:usort(L))}.
 
 to_list({tree, P}) ->
-    to_list_tree(P).
+    fold_tree(fun(E, Acc) -> [E | Acc] end, [], P).
 
 add_tree(Perm, Dict) ->
-    case {lists:member(<<"...">>, Perm), test_perms_tree(Perm, Dict)} of
-        {false, true} ->
-            Dict;
+    case lists:member(<<"...">>, Perm) of
+        true ->
+            add1(Perm, Dict);
         _ ->
-            add1(Perm, Dict)
+            case test_perms_tree(Perm, Dict) of
+                true ->
+                    Dict;
+                _ ->
+                    add1(Perm, Dict)
+            end
     end.
 
 add1([], Dict) ->
     ?O:store(nothing, true, Dict);
 
 add1([<<"...">>], Dict) ->
-    D1 = ?O:store('...', ?O:store(nothing, true, ?O:new()), ?O:new()),
     case ?O:find(nothing, Dict) of
         {ok, true} ->
-            ?O:store(nothing, true, D1);
+            [{'...',[{nothing,true}]},{nothing,true}];
         _ ->
-            D1
+            [{'...', [{nothing, true}]}]
     end;
 
 add1([<<"_">> | T], Dict) ->
     add1(['_' | T], Dict);
 
+add1([E | T], []) ->
+    [{E, addq(T)}];
+
 add1([E | T], Dict) ->
     V1 = case ?O:find(E, Dict) of
-             {ok, V} ->
-                 V;
-             _ ->
-                 ?O:new()
-         end,
-    V2 = add_tree(T, V1),
-    ?O:store(E, V2, Dict).
+            {ok, V} ->
+                add1(T, V);
+            _ ->
+                addq(T)
+        end,
+    ?O:store(E, V1, Dict).
+
+addq([]) ->
+    [{nothing, true}];
+
+addq([<<"...">>]) ->
+    [{'...', [{nothing, true}]}];
+
+addq([<<"_">> | T]) ->
+    [{'_', addq(T)}];
+addq([E | T]) ->
+    [{E, addq(T)}].
+
 
 test_perms_tree([], Dict) ->
     {ok, true} == ?O:find(nothing, Dict);
@@ -61,43 +79,35 @@ test_perms_tree([], Dict) ->
 test_perms_tree(_Perm, []) ->
     false;
 
-test_perms_tree([E | T], Dict) ->
-    case ?O:find('...', Dict) of
-        {ok, _} ->
+test_perms_tree([_ | _], [{'...', _} | _ ])->
+    true;
+
+test_perms_tree([E | T], [{'_', Dict} | Rest ])->
+    case test_perms_tree(T, Dict) of
+        true ->
             true;
+        false ->
+            test_perms_tree([E | T], Rest)
+    end;
+
+test_perms_tree([E | T], Dict) ->
+    case ?O:find(E, Dict) of
+        {ok, V2} ->
+            test_perms_tree(T, V2);
         _ ->
-            R1 = case ?O:find('_', Dict) of
-                     {ok, V1} ->
-                         test_perms_tree(T, V1);
-                     _ ->
-                         false
-                 end,
-            case {R1, ?O:find(E, Dict)} of
-                {true, _} ->
-                    true;
-                {_, {ok, V2}} ->
-                    test_perms_tree(T, V2);
-                _ ->
-                    false
-            end
+            false
     end.
 
-to_list_tree(P)->
-    lists:foldl(fun(E, Acc) ->
-                        E1 = to_list1(E),
-                        Acc1 = Acc ++ E1,
-                        Acc1
-                end, [], P).
+fold_tree(Fun, Acc0, P) ->
+    fold([], Fun, Acc0, P).
 
-
-to_list1({nothing, true}) ->
-    [[]];
-
-to_list1({'_', Ps}) ->
-    [ [<<"_">> | P] || P <- to_list_tree(Ps)];
-
-to_list1({'...', Ps}) ->
-    [ [<<"...">> | P] || P <- to_list_tree(Ps)];
-
-to_list1({K, Ps}) ->
-    [ [K | P] || P <- to_list_tree(Ps)].
+fold(Pfx, Fun, Acc0, P) ->
+    lists:foldl(fun({nothing, true}, Acc) ->
+                        Fun(lists:reverse(Pfx), Acc);
+                   ({'_', Ps}, Acc) ->
+                        fold([<<"_">> | Pfx], Fun, Acc, Ps);
+                   ({'...', Ps}, Acc) ->
+                        fold([<<"...">> | Pfx], Fun, Acc, Ps);
+                   ({E, Ps}, Acc) ->
+                        fold([E | Pfx], Fun, Acc, Ps)
+                end, Acc0, P).
