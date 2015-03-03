@@ -41,7 +41,7 @@ permissions(N) ->
     [permission(random:uniform(4), true) | permissions(N-1)].
 
 test_perms(Perm, [Test|Tests]) ->
-    match(Perm, Test) orelse test_perms(Perm, Tests).
+    libsnarlmatch:match(Perm, Test) orelse libsnarlmatch:test_perms(Perm, Tests).
 
 bench_dict_test_() ->
     L = permissions(),
