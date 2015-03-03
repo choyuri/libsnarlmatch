@@ -1,10 +1,9 @@
--module(libsnarlmatch).
+-module(libsnarlmatch_tree).
 
 -export([test_perms/2, new/0, add/2, from_list/1, to_list/1]).
 
 %-type permission() :: [binary()].
 %-type permission_matcher() :: [binary()].
-
 
 new() ->
     orddict:new().
@@ -79,8 +78,15 @@ to_list(P) ->
                         Acc1
                 end, [], P).
 
+
 to_list1({nothing, true}) ->
     [[]];
+
+to_list1({'_', Ps}) ->
+    [ [<<"_">> | P] || P <- to_list(Ps)];
+
+to_list1({'...', Ps}) ->
+    [ [<<"...">> | P] || P <- to_list(Ps)];
 
 to_list1({K, Ps}) ->
     [ [K | P] || P <- to_list(Ps)].

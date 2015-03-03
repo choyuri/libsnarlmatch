@@ -40,51 +40,34 @@ permissions(0) ->
 permissions(N) ->
     [permission(random:uniform(4), true) | permissions(N-1)].
 
-match([], []) ->
-    true;
-
-match([], [<<"...">>]) ->
-    false;
-
-match(_, [<<"...">>]) ->
-    true;
-
-match([], [_X|_R]) ->
-    false;
-
-match([_ | InRest], [<<"...">>|_TestRest] = Test) ->
-    match(InRest, Test);
-
-match([X|InRest], [X|TestRest]) ->
-    match(InRest, TestRest);
-
-match([_|InRest], [<<"_">>|TestRest]) ->
-    match(InRest, TestRest);
-
-match(_, _) ->
-    false.
-
-test_perms(_Perm, []) ->
-    false;
-
 test_perms(Perm, [Test|Tests]) ->
     match(Perm, Test) orelse test_perms(Perm, Tests).
 
-bench_test() ->
+bench_dict_test_() ->
     L = permissions(),
     P = permission(3, false),
-    T = libsnarlmatch:from_list(L),
-    ?debugTime("List: ", bench_list(P, L)),
-    ?debugTime("Tree: ", bench_tree(P, T)),
-    true.
+    T = libsnarlmatch_tree:from_list(L),
+    [
+     {timeout, 60, ?_assert(?debugTime("List:     ", bench_list(P, L)))},
+     {timeout, 60, ?_assert(?debugTime("Conv Tree ", bench_conv_tree(L)))},
+     {timeout, 60, ?_assert(?debugTime("Tree      ", bench_tree(P, T)))}
+    ].
+
+
+
+bench_conv_tree(L) ->
+    [begin
+         libsnarlmatch_tree:from_list(L)
+     end || _ <- lists:seq(0, 100)], true.
 
 bench_list(P, L) ->
     [begin
-      test_perms(P, L)
-     end || _ <- lists:seq(0,1000)], true.
+         libsnarlmatch:test_perms(P, L)
+     end || _ <- lists:seq(0,10000)], true.
 
 bench_tree(P, T) ->
     [begin
-      libsnarlmatch:test_perms(P, T)
-     end || _ <- lists:seq(0,1000)], true. 
+         libsnarlmatch_tree:test_perms(P, T)
+     end || _ <- lists:seq(0,10000)], true.
+
 -endif.
