@@ -2,7 +2,8 @@
 
 -ifdef(TEST).
 -ifdef(EQC).
--define(EQC_NUM_TESTS, 500).
+-define(EQC_NUM_TESTS, 100).
+-define(EQC_EUNIT_TIMEUT, 600).
 -include_lib("fqc/include/fqc.hrl").
 -compile(export_all).
 
@@ -13,11 +14,11 @@ test_permission() ->
     not_empty(list(non_blank_string())).
 
 permission_prefix() ->
-    list(frequency([{9,non_blank_string()}, {1, <<"_">>}])).
+    list(frequency([{50,non_blank_string()}, {1, <<"_">>}])).
 
 permission() ->
     frequency([
-               {20, not_empty(permission_prefix())},
+               {100, not_empty(permission_prefix())},
                {1, ?LET(L, permission_prefix(), L ++ [<<"...">>])}
               ]).
 
@@ -62,6 +63,39 @@ tree_and_bad_perm() ->
 permissions() ->
     not_empty(list(permission())).
 
+
+prop_minify() ->
+    ?FORALL({T, L}, tree(),
+            begin
+                T1 = ?T:minify(T),
+                R = [P
+                     || P <- L, not ?T:test_perms(P, T1)],
+                ?WHENFAIL(io:format(
+                            user,
+                            "L : ~p~n"
+                            "T : ~p~n"
+                            "R : ~p~n",
+                            [L, T, R]),
+                          R == [])
+            end).
+
+prop_merge() ->
+    ?FORALL({{AT, AL}, {BT, BL}}, {tree(), tree()},
+            begin
+                M = ?T:minify(?T:merge(AT, BT)),
+                ML = ?T:minify(?T:from_list(AL ++ BL)),
+                ?WHENFAIL(io:format(
+                            user,
+                            "A   : ~p~n"
+                            "B   : ~p~n"
+                            "Ta  : ~p~n"
+                            "Tb  : ~p~n"
+                            "M   : ~p~n"
+                            "ML  : ~p~n",
+                            [AL, BL, AT, BT, M, ML]),
+                          M == ML)
+            end).
+
 prop_no_match() ->
     ?FORALL({T, P}, tree_and_bad_perm(),
             ?WHENFAIL(io:format(
@@ -86,7 +120,7 @@ prop_list_convert() ->
                             "T1  : ~p~n"
                             "T2  : ~p~n",
                             [LIn, L1, L2, T1, T2]),
-                          T1 == T2 andalso L1 == L2)
+                          L1 == L2)
             end).
 
 prop_compare_from_list() ->
@@ -123,16 +157,15 @@ prop_compare_build() ->
 prop_test_all_allowed() ->
     ?FORALL({T, L}, tree(),
             begin
-                R1 = [?T:test_perms(P, T) || P <- L],
-                R2 = [V || V <- R1, V =/= true],
+                R = [P
+                     || P <- L, not ?T:test_perms(P, T)],
                 ?WHENFAIL(io:format(
                             user,
                             "L : ~p~n"
                             "T : ~p~n"
-                            "R1 : ~p~n"
-                            "R2 : ~p~n",
-                            [L, T, R1, R2]),
-                          R2 == [])
+                            "R : ~p~n",
+                            [L, T, R]),
+                          R == [])
             end).
 
 -endif.
