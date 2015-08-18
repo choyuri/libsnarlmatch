@@ -1,14 +1,10 @@
-{application, libsnarlmatch,
- [
-  {description, "permission matcher library"},
-  {vsn, "0.1.5"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {env, []},
-  {contributors, ["Heinz N. Gies"]},
-  {licenses, ["CDDL"]},
-  {links, [{"Github", "https://github.com/project-fifo/libsnarlmatch"}]}
- ]}.
+{application,libsnarlmatch,
+             [{description,"permission matcher library"},
+              {vsn,"0.1.6"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {contributors,["Heinz N. Gies"]},
+              {licenses,["CDDL"]},
+              {links,[{"Github",
+                       "https://github.com/project-fifo/libsnarlmatch"}]}]}.

@@ -1,10 +1,8 @@
 -module(libsnarlmatch_eqc).
 
--ifdef(TEST).
--ifdef(EQC).
--define(EQC_NUM_TESTS, 100).
--define(EQC_EUNIT_TIMEUT, 600).
--include_lib("fqc/include/fqc.hrl").
+-include_lib("eqc/include/eqc.hrl").
+-include_lib("fqc/include/fqci.hrl").
+
 -compile(export_all).
 
 -define(L, libsnarlmatch).
@@ -167,6 +165,3 @@ prop_test_all_allowed() ->
                             [L, T, R]),
                           R == [])
             end).
-
--endif.
--endif.

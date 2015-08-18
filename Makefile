@@ -10,3 +10,6 @@ deps:
 
 clean:
 	$(REBAR) clean
+
+qc:
+	rebar3 as eqc eqc
