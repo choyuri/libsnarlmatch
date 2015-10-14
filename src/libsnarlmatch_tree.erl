@@ -3,16 +3,20 @@
 -export([test_perms/2, minify/1, new/0, add/2, from_list/1, to_list/1,
          merge/2]).
 
+-export_type([tree/0]).
+
+-type tree() :: {tree, maps:map()}.
+
 %%-type permission() :: [binary()].
 %%-type permission_matcher() :: [binary()].
 
--define(O, orddict).
--define(END, ?O:store(nothing, true, ?O:new())).
--define(EMPTY, ?O:new()).
+-define(O, maps).
+-define(END, #{nothing => true}).
+-define(EMPTY, #{}).
 -define(SPLIT_LEN, 1000).
 
 new() ->
-    {tree, ?O:new()}.
+    {tree, ?EMPTY}.
 
 
 add(Perm, {tree, Dict}) ->
@@ -36,6 +40,7 @@ merge({tree, A}, {tree, B}) ->
 
 minify({tree, A}) ->
     {tree, fold_tree(fun add_tree/2, ?EMPTY, A)}.
+%%from_list(to_list(A)).
 
 add_tree(Perm, Dict) ->
     case lists:member(<<"...">>, Perm) of
@@ -51,68 +56,78 @@ add_tree(Perm, Dict) ->
     end.
 
 add1([], Dict) ->
-    ?O:store(nothing, true, Dict);
+    Dict#{nothing => true};
 
-add1(_, [{'...', _} | _] = Dict) ->
+add1(_, Dict = #{'...' := _}) ->
     Dict;
 
-add1([<<"...">>], Dict) ->
-    D = ?O:store('...', ?END, ?EMPTY),
-    case ?O:find(nothing, Dict) of
-        {ok, true} ->
-            ?O:store(nothing, true, D);
-        _ ->
-            D
-    end;
+
+add1([<<"...">>], #{nothing := true}) ->
+    #{'...' => ?END, nothing => true};
+
+add1([<<"...">>], _) ->
+    #{'...' => ?END};
 
 add1([<<"_">> | T], Dict) ->
     add1(['_' | T], Dict);
 
-add1([E | T], Dict) ->
-    case ?O:find('...', Dict) of
-        {ok, _} ->
+add1(_, Dict = #{'...' := _}) ->
+    Dict;
+
+add1([E | T], Dict = #{'_' := Sub}) ->
+    case test_perms_tree(T, Sub) of
+        true ->
             Dict;
-        _ ->
+        false ->
             V1 = case ?O:find(E, Dict) of
                      {ok, V} ->
                          add1(T, V);
                      _ ->
                          addq(T)
                  end,
-            ?O:store(E, V1, Dict)
-    end.
+            Dict#{E => V1}
+    end;
+
+add1([E | T], Dict) ->
+    V1 = case ?O:find(E, Dict) of
+             {ok, V} ->
+                 add1(T, V);
+             _ ->
+                 addq(T)
+         end,
+    Dict#{E => V1}.
 
 addq([]) ->
     ?END;
 
 addq([<<"...">>]) ->
-    ?O:store('...', ?END, ?EMPTY);
+    #{'...' => ?END};
 
 addq([<<"_">> | T]) ->
-    ?O:store('_', addq(T), ?EMPTY);
+    #{'_' => addq(T)};
 
 addq([E | T]) ->
-    ?O:store(E, addq(T), ?EMPTY).
+    #{E => addq(T)}.
 
-test_perms_tree([], Dict) ->
-    {ok, true} == ?O:find(nothing, Dict);
+test_perms_tree([], #{nothing := true}) ->
+    true;
 
-test_perms_tree(_Perm, []) ->
-   false;
+test_perms_tree([], _) ->
+    false;
 
-test_perms_tree([_ | _], [{'...', _} | _ ])->
+test_perms_tree([_ | _], #{'...' := _}) ->
     true;
 
 %% If we see the '_' we need to test if its children match
 %% but if not it still could be in the others.
-test_perms_tree([E | T], [{'_', Dict} | Rest ])->
-    test_perms_tree(T, Dict) orelse
-        test_perms_tree([E | T], Rest);
+test_perms_tree([E | T], #{'_' := Sub} = Full) ->
+    test_perms_tree(T, Sub) orelse
+        test_perms_tree([E | T], maps:remove('_', Full));
 
 test_perms_tree([E | T], Dict) ->
     case ?O:find(E, Dict) of
-        {ok, V2} ->
-            test_perms_tree(T, V2);
+        {ok, Sub} ->
+            test_perms_tree(T, Sub);
         _ ->
             false
     end.
@@ -121,12 +136,12 @@ fold_tree(Fun, Acc0, P) ->
     fold([], Fun, Acc0, P).
 
 fold(Pfx, Fun, Acc0, P) ->
-    ?O:fold(fun(nothing, true, Acc) ->
-                    Fun(lists:reverse(Pfx), Acc);
-               ('_', Ps, Acc) ->
-                    fold([<<"_">> | Pfx], Fun, Acc, Ps);
-               ('...', Ps, Acc) ->
-                    fold([<<"...">> | Pfx], Fun, Acc, Ps);
-               (E, Ps, Acc) ->
-                    fold([E | Pfx], Fun, Acc, Ps)
-            end, Acc0, P).
+    lists:foldl(fun({nothing, true}, Acc) ->
+                        Fun(lists:reverse(Pfx), Acc);
+                   ({'_', Ps}, Acc) ->
+                        fold([<<"_">> | Pfx], Fun, Acc, Ps);
+                   ({'...', Ps}, Acc) ->
+                        fold([<<"...">> | Pfx], Fun, Acc, Ps);
+                   ({E, Ps}, Acc) ->
+                        fold([E | Pfx], Fun, Acc, Ps)
+                end, Acc0, lists:sort(?O:to_list(P))).
