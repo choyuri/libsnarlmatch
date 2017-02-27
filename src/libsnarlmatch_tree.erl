@@ -22,6 +22,12 @@ new() ->
 add(Perm, {tree, Dict}) ->
     {tree, add_tree(Perm, Dict)}.
 
+test_perms({'or', PLeft, PRight}, Permissions) ->
+    test_perms(PLeft, Permissions) orelse test_perms(PRight, Permissions);
+
+test_perms({'and', PLeft, PRight}, Permissions) ->
+    test_perms(PLeft, Permissions) andalso test_perms(PRight, Permissions);
+
 test_perms(Perm, {tree, Dict}) ->
     test_perms_tree(Perm, Dict).
 

@@ -6,38 +6,47 @@
 
 -export([test_perms/2, match/2, new/0, add/2, to_list/1]).
 
--type permission() :: [binary()].
--type permission_matcher() :: [binary()].
+-type permission_check() :: permission() |
+                            {'or', permission(), permission()} |
+                            {'and', permission(), permission()}.
 
+-type permission() :: [binary()].
+-type permissions() :: [permission()] | libsnarlmatch_tree:tree().
 
 new() ->
     [].
 
--spec test_perms(Permissions::[permission()], Matcher::permission_matcher()) ->
+-spec test_perms(Permissions::permission_check(), Permissions::permissions()) ->
                    true | false.
 
-test_perms(Perm, {tree, _} = T) ->
-    libsnarlmatch_tree:test_perms(Perm, T);
+test_perms({'or', PLeft, PRight}, Permissions) ->
+    test_perms(PLeft, Permissions) orelse test_perms(PRight, Permissions);
+
+test_perms({'and', PLeft, PRight}, Permissions) ->
+    test_perms(PLeft, Permissions) andalso test_perms(PRight, Permissions);
+
+test_perms(Perm, {tree, _} = Tree) ->
+    libsnarlmatch_tree:test_perms(Perm, Tree);
 
 test_perms(_Perm, []) ->
     false;
 
-test_perms(Perm, [Test|Tests]) ->
-    match(Perm, Test) orelse test_perms(Perm, Tests).
+test_perms(Perm, [Test|Permissions]) ->
+    match(Perm, Test) orelse test_perms(Perm, Permissions).
 
-add(Perm, {tree,_} = T) ->
-    libsnarlmatch_tree:add(Perm, T);
+add(Perm, {tree,_} = Tree) ->
+    libsnarlmatch_tree:add(Perm, Tree);
 
 add(Perm, Perms) ->
     [Perm | Perms].
 
-to_list({tree, _} = T) ->
-    libsnarlmatch_tree:to_list(T);
+to_list({tree, _} = Tree) ->
+    libsnarlmatch_tree:to_list(Tree);
 
 to_list(Perms) ->
     Perms.
 
--spec match(Permission::permission(), Matcher::permission_matcher()) ->
+-spec match(Permission::permission(), Permissions::permission()) ->
                    true | false.
 match([], []) ->
     true;

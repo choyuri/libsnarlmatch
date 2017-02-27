@@ -9,6 +9,12 @@
 -define(T, libsnarlmatch_tree).
 
 test_permission() ->
+    oneof(
+      [{'or', test_permission_(), test_permission_()},
+       {'and', test_permission_(), test_permission_()},
+       test_permission_()]).
+
+test_permission_() ->
     not_empty(list(non_blank_string())).
 
 permission_prefix() ->
